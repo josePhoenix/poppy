@@ -94,7 +94,8 @@ install:
     - if [[ $SETUP_CMD == 'test --coverage' ]]; then $PIP_INSTALL coverage coveralls; fi
 
 script:
-   - python setup.py $SETUP_CMD
+   - if [[ $SETUP_CMD == build_sphinx* ]]; then cd docs && make html; fi
+   - if [[ $SETUP_CMD != build_sphinx* ]]; then python setup.py $SETUP_CMD; fi
 
 after_success:
     # If coveralls.io is set up for this package, uncomment the line

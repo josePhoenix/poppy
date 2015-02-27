@@ -15,13 +15,41 @@ Documentation can be found online at https://pythonhosted.org/poppy/
 
 This is an Astropy affiliated package.
 """
+from .version import __version__
 
-# Affiliated packages may add whatever they like to this file, but
-# should keep this content at the top.
+# Initialize astropy's configuration framework and/or update user config files
 # ----------------------------------------------------------------------------
-# make use of astropy affiliate framework to set __version__, __githash__, and 
-# add the test() helper function
-from ._astropy_init import *
+try:
+    _ASTROPY_SETUP_  # astropy sticks in an extra builtin with magic
+except NameError:
+    _ASTROPY_SETUP_ = None
+
+if not _ASTROPY_SETUP_:
+    import os
+    from warnings import warn
+    from astropy import config
+
+    # add these here so we only need to cleanup the namespace at the end
+    config_dir = None
+
+    if not os.environ.get('ASTROPY_SKIP_CONFIG_UPDATE', False):
+        config_dir = os.path.dirname(__file__)
+        config_template = os.path.join(config_dir, __package__ + ".cfg")
+        if os.path.isfile(config_template):
+            try:
+                config.configuration.update_default_config(
+                    __package__, config_dir, version=__version__)
+            except TypeError as orig_error:
+                try:
+                    config.configuration.update_default_config(
+                        __package__, config_dir)
+                except config.configuration.ConfigurationDefaultMissingError as e:
+                    wmsg = (e.args[0] + " Cannot install default profile. If you are "
+                            "importing from source, this is expected.")
+                    warn(config.configuration.ConfigurationDefaultMissingWarning(wmsg))
+                    del e
+                except:
+                    raise orig_error
 # ----------------------------------------------------------------------------
 
 
@@ -92,4 +120,7 @@ if conf.autosave_fftw_wisdom:  # if we might have autosaved, then auto reload as
     # the following will just return if FFTW is not present
     utils.fftw_load_wisdom()
 
-__all__ = ['conf', 'Instrument'] + utils.__all__ + poppy_core.__all__ + optics.__all__
+__all__ = ['conf', 'Instrument'] \
+            + utils.__all__ \
+            + poppy_core.__all__ \
+            + optics.__all__

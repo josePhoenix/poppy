@@ -17,7 +17,7 @@ from poppy import poppy_core, instrument, optics, utils
 WEIGHTS_DICT = {'wavelengths': [2.0e-6, 2.1e-6, 2.2e-6], 'weights': [0.3, 0.5, 0.2]}
 WAVELENGTHS_ARRAY = np.array(WEIGHTS_DICT['wavelengths'])
 WEIGHTS_ARRAY = np.array(WEIGHTS_DICT['weights'])
-FOV_PIXELS = 100
+FOV_PIXELS = 10
 
 def test_instrument_source_weight_dict(weights_dict=WEIGHTS_DICT):
     """

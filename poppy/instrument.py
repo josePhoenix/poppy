@@ -78,9 +78,6 @@ class Instrument(object):
         Radial offset of the target from the center, in arcseconds
     source_offset_theta : float
         Position angle for that offset
-    rebin : bool
-        For output files, write an additional FITS extension including a version of the output array
-        rebinned down to the actual detector pixel scale?
     jitter : string "gaussian" or None
         Type of jitter model to apply. Currently only convolution with a Gaussian kernel of specified
         width `jitter_sigma` is implemented. (default: None)

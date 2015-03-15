@@ -26,24 +26,29 @@ from . import utils
 __all__ = ['Instrument']
 
 class Instrument(object):
-    """ A generic astronomical instrument, composed of 
-        (1) an optical system implemented using POPPY, optionally with several configurations such as
-            selectable image plane or pupil plane stops, and
-        (2) some defined spectral bandpass(es) such as selectable filters, implemented using pysynphot. 
+    """
+    A generic astronomical instrument, composed of
+      (1) an optical system implemented using POPPY, optionally with
+          several configurations such as selectable image plane or
+          pupil plane stops, and
+      (2) some defined spectral bandpass(es) such as selectable
+          filters, implemented using pysynphot.
 
-    This provides the capability to model both the optical and spectral responses of a given system. 
-    PSFs may be calculated for given source
-    spectral energy distributions and output as FITS files, with substantial flexibility.
+    This provides the capability to model both the optical and spectral
+    responses of a given system. PSFs may be calculated for given
+    source spectral energy distributions and output as FITS files, with
+    substantial flexibility.
 
-    It also provides capabilities for modeling some PSF effects not due to wavefront aberrations, for instance
-    blurring caused by pointing jitter.
+    It also provides capabilities for modeling some PSF effects not due
+    to wavefront aberrations, for instance blurring caused by pointing
+    jitter.
 
-
-    This is a base class for Instrument functionality - you cannot easily use this directly, but
-    rather should subclass it for your particular instrument of interest.   Some of the complexity of this class 
-    is due to splitting up functionality into many separate routines to allow users to subclass just the relevant
-    portions for a given task. There's a fair amount of functionality here but the learning curve is steeper than
-    elsewhere in POPPY.
+    This is a base class for Instrument functionality - you cannot
+    easily use this directly, but rather should subclass it for your
+    particular instrument of interest. Some of the complexity of this
+    class is due to splitting up functionality into many separate
+    methods to allow users to subclass just the relevant portions for
+    a given task.
 
     You will at a minimum want to override the following class methods:
 
@@ -62,15 +67,24 @@ class Instrument(object):
 
     name = "Instrument"
     pupil = None
-    "Aperture for this optical system. May be a FITS filename, FITS HDUList object, or poppy.OpticalElement"
+    """
+    Aperture for this optical system. May be a FITS filename,
+    FITS HDUList object, or poppy.OpticalElement
+    """
     pupilopd = None
-    """Pupil OPD for this optical system. May be a FITS filename, or FITS HDUList.
-    If the file contains a datacube, you may set this to a tuple (filename, slice) to select a given slice, or else
-    the first slice will be used."""
+    """
+    Pupil OPD for this optical system. May be a FITS filename,
+    or FITS HDUList.
+
+    If the file contains a datacube, you may set this to a tuple
+    (filename, slice) to select a given slice, or else the first slice
+    will be used, equivalent to (filename, 0).
+    """
     options = {}
     """
-    A dictionary capable of storing other arbitrary options, for extensibility. The following are all optional, and
-    may or may not be meaningful depending on which instrument is selected.
+    A dictionary capable of storing other arbitrary options, for
+    extensibility. The following are all optional, and may or may not
+    be meaningful depending on which instrument is selected.
 
     Parameters
     ----------
@@ -79,14 +93,16 @@ class Instrument(object):
     source_offset_theta : float
         Position angle for that offset
     jitter : string "gaussian" or None
-        Type of jitter model to apply. Currently only convolution with a Gaussian kernel of specified
-        width `jitter_sigma` is implemented. (default: None)
+        Type of jitter model to apply. Currently only convolution with
+        a Gaussian kernel of specified width `jitter_sigma` is
+        implemented. (default: None)
     jitter_sigma : float
-        Width of the jitter kernel in arcseconds (default: 0.007 arcsec)
+        Width of the jitter kernel in arcseconds
+        (default: 0.007 arcsec)
     parity : string "even" or "odd"
-        You may wish to ensure that the output PSF grid has either an odd or even number of pixels.
-        Setting this option will force that to be the case by increasing npix by one if necessary.
-
+        You may wish to ensure that the output PSF grid has either an
+        odd or even number of pixels. Setting this option will force
+        that to be the case by increasing npix by one if necessary.
     """
     filter_list = None
     """List of available filter names for this instrument"""
@@ -127,62 +143,85 @@ class Instrument(object):
     def calcPSF(self, outfile=None, source=None, nlambda=None, monochromatic=None ,
             fov_arcsec=None, fov_pixels=None,  oversample=None, detector_oversample=None, fft_oversample=None, rebin=True,
             clobber=True, display=False, save_intermediates=False, return_intermediates=False):
-        """ Compute a PSF.
-        The result can either be written to disk (set outfile="filename") or else will be returned as
-        a FITS HDUlist object.
+        """
+        Compute a point-spread function.
 
+        The result can either be written to disk
+        (set outfile="filename") or else will be returned as a FITS
+        HDUlist object.
 
-        Output sampling may be specified in one of two ways: 
+        Output sampling may be specified in one of two ways:
 
-        1) Set `oversample=<number>`. This will use that oversampling factor beyond detector pixels
-           for output images, and beyond Nyquist sampling for any FFTs to prior optical planes. 
-        2) set `detector_oversample=<number>` and `fft_oversample=<other_number>`. This syntax lets
-           you specify distinct oversampling factors for intermediate and final planes. 
+        1) Set `oversample=<number>`. This will use that oversampling
+           factor beyond detector pixels for output images, and beyond
+           Nyquist sampling for any FFTs to prior optical planes.
+        2) Set `detector_oversample=<number>` and
+           `fft_oversample=<other_number>`. This syntax lets you
+           specify distinct oversampling factors for intermediate and
+           final planes.
 
         By default, both oversampling factors are set equal to 2.
 
         Notes
         -----
-        More advanced PSF computation options (pupil shifts, source positions, jitter, ...)
-        may be set by configuring the `.options` dictionary attribute of this class.
+        More advanced PSF computation options (pupil shifts,
+        source positions, jitter, ...) may be set by configuring the
+        `options` dictionary attribute of this class.
 
         Parameters
         ----------
         source : pysynphot.SourceSpectrum or dict
-            specification of source input spectrum. Default is a 5700 K sunlike star.
+            Specification of source input spectrum. Default is a
+            5700 K sunlike star.
         nlambda : int
-            How many wavelengths to model for broadband? 
-            The default depends on how wide the filter is: (5,3,1) for types (W,M,N) respectively
+            How many wavelengths to model for broadband? Default is 10,
+            but behavior can be customized (e.g. to vary based on the
+            selected filter) by subclassing and overriding the
+            `_getDefaultNLambda` method.
         monochromatic : float, optional
-            Setting this to a wavelength value (in meters) will compute a monochromatic PSF at that 
-            wavelength, overriding filter and nlambda settings.
+            Setting this to a wavelength value (in meters) will compute
+            a monochromatic PSF at that wavelength, overriding filter
+            and nlambda settings.
         fov_arcsec : float
-            field of view in arcsec. Default=5
+            Field of view in arcsec. Default is 5.0 arcsec, but can be
+            customized by subclassing and overriding the
+            `_getDefaultFOV` method.
         fov_pixels : int
-            field of view in pixels. This is an alternative to fov_arcsec.
+            Field of view in pixels. This is an alternative to
+            `fov_arcsec`.
         outfile : string
-            Filename to write. If None, then result is returned as an HDUList
+            Filename to write. If None, then result is returned as an
+            HDUList.
         oversample, detector_oversample, fft_oversample : int
-            How much to oversample. Default=4. By default the same factor is used for final output 
-            pixels and intermediate optical planes, but you may optionally use different factors 
-            if so desired.
+            How much to oversample. Default is 4. By default the same
+            factor is used for final output pixels and intermediate
+            optical planes, but you may optionally use different
+            factors if so desired.
         rebin : bool, optional
-            If set, the output file will contain a FITS image extension containing the PSF rebinned
-            onto the actual detector pixel scale. Thus, setting oversample=<N> and rebin=True is
-            the proper way to obtain high-fidelity PSFs computed on the detector scale. Default is True.
-        clobber : bool
-            overwrite output FITS file if it already exists?
-        display : bool
+            If set, the output file will contain a FITS image extension
+            containing the PSF rebinned onto the actual detector pixel
+            scale. Thus, setting oversample=<N> and rebin=True is
+            the proper way to obtain high-fidelity PSFs computed on the
+            detector scale. Default is True.
+        clobber : bool, optional
+            Overwrite output FITS file if it already exists?
+            Default is True.
+        display : bool, optional
             Whether to display the PSF when done or not.
-        save_intermediates, return_intermediates : bool
-            Options for saving to disk or returning to the calling function the intermediate optical planes during the propagation. 
-            This is useful if you want to e.g. examine the intensity in the Lyot plane for a coronagraphic propagation.
+            Default is False.
+        save_intermediates, return_intermediates : bool, optional
+            Options for saving to disk or returning to the calling
+            function the intermediate optical planes during the
+            propagation. This is useful if you want to e.g. examine the
+            intensity in the Lyot plane for a coronagraphic
+            propagation. Default is False.
 
         Returns
         -------
         outfits : fits.HDUList
             The output PSF is returned as a fits.HDUlist object.
-            If `outfile` is set to a valid filename, the output is also written to that file.
+            If `outfile` is set to a valid filename, the output is
+            also written to that file.
 
 
         """
@@ -269,16 +308,21 @@ class Instrument(object):
             return result
 
     def _calcPSF_format_output(self, result, options):
-        """ Apply desired formatting to output file:
-                 - rebin to detector pixel scale if desired
-                 - set up FITS extensions if desired
-                 - output either the oversampled, rebinned, or both
-        Which image(s) get output depends on the value of the options['output_mode'] 
-        parameter. It may be set to 'Oversampled image' to output just the oversampled image,
-        'Detector sampled image' to output just the image binned down onto detector pixels, or
-        'Both as FITS extensions' to output the oversampled image as primary HDU and the 
-        rebinned image as the first image extension. For convenience, the option can be set
-        to just 'oversampled', 'detector', or 'both'.
+        """
+        Apply desired formatting to output file.
+
+          (1) rebin to detector pixel scale if desired
+          (2) set up FITS extensions if desired
+          (3) output either the oversampled, rebinned, or both
+
+        Which image(s) get output depends on the value of the
+        options['output_mode'] parameter. It may be set to
+        'Oversampled image' to output just the oversampled image,
+        'Detector sampled image' to output just the image binned down
+        onto detector pixels, or 'Both as FITS extensions' to output
+        the oversampled image as primary HDU and the rebinned image as
+        the first image extension. For convenience, the option can be
+        set to just 'oversampled', 'detector', or 'both'.
 
         Modifies the 'result' HDUList object.
 
@@ -318,22 +362,21 @@ class Instrument(object):
             result.append(rebinned_result)
             return
 
-
-
-
-
-
-
     def _getFITSHeader(self, result, options):
-        """ Set instrument-specific FITS header keywords
+        """
+        Set instrument-specific FITS header keywords
 
-        Parameters:
-            result : fits.HDUList object
-                The HDUList containing the image to be output.
-            options : dict
-                A dictionary containing options
+        Parameters
+        ----------
 
-        This function will modify the primary header of the result HDUlist.
+        result : fits.HDUList object
+            The HDUList containing the image to be output.
+        options : dict
+            A dictionary containing the options used for the
+            calculation
+
+        This function will modify the primary header of the
+        result HDUlist.
         """
 
         try:
@@ -380,44 +423,50 @@ class Instrument(object):
     def _validateConfig(self, wavelengths=None):
         """Determine if a provided instrument configuration is valid.
 
-        Wavelengths to be propagated in the calculation are passed in as the `wavelengths`
-        keyword argument.
+        Wavelengths to be propagated in the calculation are passed in
+        as the `wavelengths` keyword argument.
 
-        Subclasses should raise an exception if the configuration is invalid/unachievable.
+        Subclasses should raise an exception if the configuration is
+        invalid or unachievable.
         """
         pass
 
 
-    def _getOpticalSystem(self,fft_oversample=2, detector_oversample = None, fov_arcsec=2, fov_pixels=None, options=dict()):
-        """ Return an OpticalSystem instance corresponding to the instrument as currently configured.
+    def _getOpticalSystem(self, fft_oversample=2, detector_oversample=None, fov_arcsec=2.0, fov_pixels=None, options=dict()):
+        """
+        Return an OpticalSystem instance corresponding to the
+        instrument as currently configured.
 
-        When creating such an OpticalSystem, you must specify the parameters needed to define the 
-        desired sampling, specifically the oversampling and field of view. 
-
+        When creating such an OpticalSystem, you must specify the
+        parameters needed to define the desired sampling, specifically
+        the oversampling and field of view.
 
         Parameters
         ----------
-
         fft_oversample : int
-            Oversampling factor for intermediate plane calculations. Default is 2
+            Oversampling factor for intermediate plane calculations.
+            Default is 2.
         detector_oversample: int, optional
-            By default the detector oversampling is equal to the intermediate calculation oversampling.
-            If you wish to use a different value for the detector, set this parameter.
-            Note that if you just want images at detector pixel resolution you will achieve higher fidelity
-            by still using some oversampling (i.e. *not* setting `oversample_detector=1`) and instead rebinning
-            down the oversampled data.
+            By default the detector oversampling is equal to the
+            intermediate calculation oversampling.
+            If you wish to use a different value for the detector, set
+            this parameter. Note that if you just want images at
+            detector pixel resolution you will achieve higher fidelity
+            by still using some oversampling (i.e. *not* setting
+            `oversample_detector=1`) and instead rebinning down the
+            oversampled data.
         fov_pixels : float
-            Field of view in pixels. Overrides fov_arcsec if both set. 
+            Field of view in pixels. Overrides fov_arcsec if both set.
         fov_arcsec : float
-            Field of view, in arcseconds. Default is 2
-        options : dict
+            Field of view, in arcseconds. Default is 2.0.
+        options : dict, optional
             Other arbitrary options for optical system creation
-
 
         Returns
         -------
         osys : poppy.OpticalSystem 
-            an optical system instance representing the desired configuration.
+            An optical system instance representing the
+            desired configuration.
 
         """
 
@@ -481,23 +530,30 @@ class Instrument(object):
         return optsys
 
     def _applyJitter(self, result, local_options=None):
-        """ Modify a PSF to account for the blurring effects of image jitter.
-        Parameter arguments are taken from the options dictionary.
+        """
+        Modify a PSF to account for the blurring effects of jitter.
+
+        The jitter model used is taken from the `options` dictionary
+        attribute on this class.
 
         Parameters
         -----------
         result : fits.HDUList 
             HDU list containing a point spread function
         local_options : dict, optional
-            Options dictionary. If not present, options will be taken from self.options. 
+            Options dictionary. If not present, options will be taken
+            from `self.options`.
 
-        The key configuration argument is options['jitter'] which defines the type of jitter.
-        If this is the string 'gaussian', then a Gaussian blurring kernel will be applied, the
-        amount of the blur is taken from the options['jitter_sigma'] value.
+        The key configuration argument is ``options['jitter']`` which
+        defines the type of jitter. If this is the string 'gaussian',
+        then a Gaussian blurring kernel will be applied, the
+        amount of the blur is taken from the
+        ``options['jitter_sigma']`` value.
 
-        Other types of jitter are not yet implemented. 
+        Other types of jitter are not yet implemented.
 
-        The image in the 'result' HDUlist will be modified by this function.
+        The image in the 'result' HDUlist will be modified by
+        this function.
         """
         if local_options is None: local_options = self.options
         if 'jitter' not in local_options.keys(): return
@@ -558,15 +614,20 @@ class Instrument(object):
     # Synthetic Photometry related methods
     #
     def _getSpecCacheKey(self, source, nlambda):
-        """ return key for the cache of precomputed spectral weightings.
-        This is a separate function so the TFI subclass can override it.
+        """
+        Return key for the cache of precomputed spectral weightings.
+
+        This is a separate function so the TFI subclass can
+        override it.
         """
         return (self.filter, source.name, nlambda)
 
     def _getSynphotBandpass(self, filtername):
-        """ Return a pysynphot.ObsBandpass object for the given desired band. 
+        """
+        Return a pysynphot.ObsBandpass object for the desired band.
 
-        By subclassing this, you can define whatever custom bandpasses are appropriate for your instrument
+        By subclassing this, you can define whatever custom bandpasses
+        are appropriate for your instrument.
 
         Parameters
         ----------
@@ -575,8 +636,7 @@ class Instrument(object):
 
         Returns
         --------
-        a pysynphot.ObsBandpass object for that filter. 
-
+        a pysynphot.ObsBandpass object for that filter.
         """
         if not _HAS_PYSYNPHOT:
             raise RuntimeError("PySynphot not found")
@@ -595,19 +655,24 @@ class Instrument(object):
         return band
 
     def _getDefaultNLambda(self, filtername):
-        """ Return the default # of wavelengths to be used for calculation by a given filter """
+        """
+        Return the default # of wavelengths to be used for
+        calculation by a given filter."""
         return 10
 
     def _getDefaultFOV(self):
-        """ Return default FOV in arcseconds """
+        """ Return default FOV in arcseconds."""
         return 5
 
     def _getFilterList(self):
-        """ Returns a list of allowable filters, and the corresponding pysynphot ObsBandpass strings
-        for each. 
+        """
+        Returns a list of allowable filters, and the corresponding
+        pysynphot ObsBandpass strings for each.
 
-        If you need to define bandpasses that are not already available in pysynphot, consider subclassing
-        _getSynphotBandpass instead to create a pysynphot spectrum based on data read from disk, etc.
+        If you need to define bandpasses that are not already available
+        in pysynphot, consider subclassing `_getSynphotBandpass`
+        instead to create a pysynphot spectrum based on data read
+        from disk, etc.
 
         Returns
         --------
@@ -615,9 +680,6 @@ class Instrument(object):
             List of string filter names
         bandpasslist : dict
             dictionary of string names for use by pysynphot
-
-        This could probably be folded into one using an OrderdDict. FIXME do that later
-
         """
 
         filterlist =  ['B', 'I', 'R', 'U', 'V']
@@ -631,26 +693,24 @@ class Instrument(object):
 
         return filterlist, bandpasslist
 
-    #def _getJitterKernel(self, type='Gaussian', sigma=10):
-
     def _getWeights(self, source=None, nlambda=5, monochromatic=None, verbose=False):
-        """ Return the set of discrete wavelengths, and weights for each wavelength,
-        that should be used for a PSF calculation.
+        """
+        Return the set of discrete wavelengths, and weights for each
+        wavelength, that should be used for a PSF calculation.
 
-        Uses pysynphot (if installed), otherwise assumes simple-minded flat spectrum
-
+        Uses pysynphot (if installed), otherwise assumes simple-minded
+        flat spectrum.
         """
         if monochromatic is not None:
             poppy_core._log.info(" monochromatic calculation requested.")
             return (np.asarray([monochromatic]),  np.asarray([1]) )
 
         elif _HAS_PYSYNPHOT and (isinstance(source, pysynphot.spectrum.SourceSpectrum)  or source is None):
-            """ Given a pysynphot.SourceSpectrum object, perform synthetic photometry for
-            nlambda bins spanning the wavelength range of interest.
+            # Given a pysynphot.SourceSpectrum object, perform synthetic photometry for
+            # nlambda bins spanning the wavelength range of interest.
 
-            Because this calculation is kind of slow, cache results for reuse in the frequent
-            case where one is computing many PSFs for the same spectral source.
-            """
+            # Because this calculation is kind of slow, cache results for reuse in the frequent
+            # case where one is computing many PSFs for the same spectral source.
             poppy_core._log.debug("Calculating spectral weights using pysynphot, nlambda=%d, source=%s" % (nlambda, str(source)))
             if source is None:
                 try:

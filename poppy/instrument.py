@@ -109,20 +109,18 @@ class Instrument(object):
     pixelscale = 0.025
     """Detector pixel scale, in arcseconds/pixel (default: 0.025)"""
 
-    def __init__(self, name="", *args, **kwargs):
-        self.name=name
-        self.pupil = optics.CircularAperture(*args, **kwargs)
+    def __init__(self):
+        self.pupil = optics.CircularAperture()
         self.pupilopd = None
         self.options = {}
         self.filter_list, self._synphot_bandpasses = self._getFilterList() # List of available filter names
+        # this is wrapped below to create an `Instrument.filter` property with validation
+        self._filter = self.filter_list[0]
+        # this is wrapped below to create an `Instrument.rotation` property with validation
+        self._rotation = 0.0
 
-        # create private instance variables. These will be
-        # wrapped just below to create properties with validation.
-        self._filter = None
-        self._rotation = None
         # for caching pysynphot results.
         self._spectra_cache = {}
-        self.filter = self.filter_list[0]
 
     def __str__(self):
         return "Instrument name="+self.name
@@ -139,7 +137,20 @@ class Instrument(object):
             raise ValueError("Instrument %s doesn't have a filter called %s." % (self.name, value))
         self._filter = value
 
-    #----- actual optical calculations follow here -----
+    @property
+    def rotation(self):
+        """
+        Rotation (in degrees counter-clockwise) of the pupil
+        relative to the detector.
+        """
+        return self._rotation
+    @rotation.setter
+    def rotation(self, value):
+        if isinstance(value, numbers.Real):
+            self._rotation = np.float64(value)
+        else:
+            raise ValueError("Invalid rotation (must be in degrees counterclockwise)")
+
     def calcPSF(self, outfile=None, source=None, nlambda=None, monochromatic=None ,
             fov_arcsec=None, fov_pixels=None,  oversample=None, detector_oversample=None, fft_oversample=None, rebin=True,
             clobber=True, display=False, save_intermediates=False, return_intermediates=False):
@@ -510,7 +521,7 @@ class Instrument(object):
 
 
         #---- apply pupil intensity and OPD to the optical model
-        optsys.addPupil(name='Entrance Pupil', optic=pupil_optic, transmission=full_pupil_path, opd=full_opd_path, opdunits='micron', rotation=self._rotation)
+        optsys.addPupil(name='Entrance Pupil', optic=pupil_optic, transmission=full_pupil_path, opd=full_opd_path, opdunits='micron', rotation=self.rotation)
 
 
         #--- add the detector element. 

@@ -467,11 +467,16 @@ class Instrument(object):
         #--- add the detector element. 
         if fov_pixels is None:
             fov_pixels = np.round(fov_arcsec/self.pixelscale)
-            if 'parity' in self.options.keys():
-                if self.options['parity'].lower() == 'odd'  and np.remainder(fov_pixels,2)==0: fov_pixels +=1
-                if self.options['parity'].lower() == 'even' and np.remainder(fov_pixels,2)==1: fov_pixels +=1
+            if 'parity' in self.options:
+                if self.options['parity'] not in ('odd', 'even'):
+                    raise ValueError("'parity' option must be either 'odd' or 'even'")
+                if self.options['parity'] == 'odd' and np.remainder(fov_pixels, 2) == 0:
+                    fov_pixels += 1
+                if self.options['parity'] == 'even' and np.remainder(fov_pixels, 2) == 1:
+                    fov_pixels += 1
 
-        optsys.addDetector(self.pixelscale, fov_pixels = fov_pixels, oversample = detector_oversample, name=self.name+" detector")
+        optsys.addDetector(self.pixelscale, fov_pixels=fov_pixels, oversample=detector_oversample,
+                           name=self.name+" detector")
 
         return optsys
 

@@ -139,6 +139,28 @@ def test_instrument_gaussian_jitter():
         reldiff = np.abs(post_sigma-expected_post_sigma)/post_sigma
         assert reldiff < tolerance, "Post-jitter PSF width is too different from expected width"
 
+def test_instrument_parity_option():
+    inst = instrument.Instrument()
+    # to force the rounding behavior, start with desired pixel size
+    # and compute the fov in arcsec: pixel size * pixel scale = fov in arcsec
+    result = inst.calcPSF(fov_arcsec=4 * inst.pixelscale)
+    assert result[1].data.shape == (4, 4), "unexpected pixel size for requested FOV"
 
+    inst.options['parity'] = 'odd'
+    result = inst.calcPSF(fov_arcsec=4 * inst.pixelscale)
+    assert result[1].data.shape == (5, 5), "forcing odd parity on even pixel sized FOV didn't work"
 
+    del inst.options['parity']  # remove parity option for testing other code path
+    result = inst.calcPSF(fov_arcsec=5 * inst.pixelscale)
+    assert result[1].data.shape == (5, 5), "unexpected pixel size for requested FOV"
 
+    inst.options['parity'] = 'even'
+    result = inst.calcPSF(fov_arcsec=5 * inst.pixelscale)
+    assert result[1].data.shape == (6, 6), "forcing even parity on odd pixel sized FOV didn't work"
+
+def test_instrument_parity_option_validation():
+    inst = instrument.Instrument()
+    inst.options['parity'] = 'foo'
+
+    with pytest.raises(ValueError):
+        inst.calcPSF()

@@ -5,11 +5,13 @@ recursive-include licenses *
 recursive-include cextern *
 recursive-include scripts *
 
-exclude *.pyc *.o
-prune docs/_build
 prune build
+prune docs/_build
+prune docs/api
 
 # added by check_manifest.py
 recursive-include notebooks *.ipynb
 recursive-include poppy *.cfg
 recursive-include poppy *.py
+
+global-exclude *.pyc *.o

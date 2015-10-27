@@ -279,18 +279,24 @@ def zernike1(j, **kwargs):
     n, m = noll_indices(j)
     return zernike(n, m, **kwargs)
 
-@lru_cache()
-def cached_zernike1(j, shape, pixelscale, pupil_radius, outside=np.nan, noll_normalize=True):
+
+def _rho_theta_from_shape(shape, pixelscale, pupil_radius):
     y, x = Wavefront.pupil_coordinates(shape, pixelscale)
     r = np.sqrt(x ** 2 + y ** 2)
 
     rho = r / pupil_radius
     theta = np.arctan2(y / pupil_radius, x / pupil_radius)
+    return rho, theta
 
+
+@lru_cache()
+def _cached_zernike1(j, shape, pixelscale, pupil_radius, outside=np.nan, noll_normalize=True):
+    rho, theta = _rho_theta_from_shape(shape, pixelscale, pupil_radius)
     n, m = noll_indices(j)
     result = zernike(n, m, rho=rho, theta=theta, outside=outside, noll_normalize=noll_normalize)
     result.flags.writeable = False  # don't let caller modify cached copy in-place
     return result
+
 
 def zernike_basis(nterms=15, npix=512, rho=None, theta=None, **kwargs):
     """
@@ -333,6 +339,16 @@ def zernike_basis(nterms=15, npix=512, rho=None, theta=None, **kwargs):
             zern_output[j] = zernike1(j + 1, npix=npix, **kwargs)
     return zern_output
 
+@lru_cache()
+def _cached_zernike_basis(nterms, shape, pixelscale, pupil_radius,
+                         outside=np.nan, noll_normalize=True):
+    """Internal function to generate a cube of Zernike terms using an
+    LRU cache and modified arguments to make things cacheable"""
+    rho, theta = _rho_theta_from_shape(shape, pixelscale, pupil_radius)
+    basis_array = zernike_basis(nterms, rho=rho, theta=theta,
+                                outside=outside, noll_normalize=noll_normalize)
+    basis_array.flags.writeable = False
+    return basis_array
 
 def hex_aperture(npix=1024, rho=None, theta=None, vertical=False):
     """

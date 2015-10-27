@@ -143,6 +143,7 @@ class ZernikeWFE(WavefrontError):
             raise ValueError("'radius' must be the radius of a circular aperture in meters"
                              "(optionally circumscribing a pupil of another shape)")
 
+        self.pupil_diam = 2 * self.radius
         self.coefficients = coefficients
         self.circular_aperture = CircularAperture(radius=self.radius, **kwargs)
         kwargs.update({'name': name})

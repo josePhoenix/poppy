@@ -101,8 +101,12 @@ from .instrument import Instrument
 # Not yet implemented:
 #from .wfe import ZernikeWFE, PowerSpectralDensityWFE, KolmogorovWFE
 
-if conf.autosave_fftw_wisdom:  # if we might have autosaved, then auto reload as well
-    # the following will just return if FFTW is not present
-    utils.fftw_load_wisdom()
+# if we might have autosaved, then auto reload as well
+if conf.use_fftw and conf.autosave_fftw_wisdom:
+    try:
+        import pyfftw
+        utils.fftw_load_wisdom()
+    except ImportError:
+        pyfftw = None
 
 __all__ = ['conf', 'Instrument'] + utils.__all__ + poppy_core.__all__ + optics.__all__

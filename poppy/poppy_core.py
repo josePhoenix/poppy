@@ -30,6 +30,7 @@ try:
     import pyfftw
     _FFTW_AVAILABLE = True
 except ImportError:
+    pyfftw = None
     _FFTW_AVAILABLE = False
 
 # internal constants for types of plane
@@ -62,10 +63,13 @@ def _wrap_propagate_for_multiprocessing(args):
     unpacking the results, and *then* at last making our instance method call.
     """
     optical_system, wavelength, retain_intermediates, normalize, usefftwflag = args
-    conf.use_fftw = usefftwflag  #passed in from parent process
+    conf.use_fftw = usefftwflag  # passed in from parent process
 
-    if conf.use_fftw and _FFTW_AVAILABLE: # we're in a different Python interpreter process so we
-        utils.fftw_load_wisdom()          # need to load the wisdom here too
+    # we're in a different Python interpreter process so we
+    # need to load the wisdom here too
+    if conf.use_fftw and _FFTW_AVAILABLE:
+        utils._loaded_fftw_wisdom = False
+        utils.fftw_load_wisdom()
 
     return optical_system.propagate_mono(wavelength, retain_intermediates=retain_intermediates, normalize=normalize)
 

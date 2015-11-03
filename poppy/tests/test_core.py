@@ -1,17 +1,16 @@
-#Test functions for core poppy functionality
-
-from .. import poppy_core 
-from .. import optics
+# Test functions for core poppy functionality
+import os
 
 import numpy as np
-import astropy.io.fits as fits
-
+from astropy.io import fits
 import pytest
-
 try:
     import scipy
 except ImportError:
     scipy = None
+
+from .. import poppy_core
+from .. import optics
 
 ####### Test Common Infrastructre #######
 

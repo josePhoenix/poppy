@@ -6,6 +6,12 @@ from .. import optics
 import numpy as np
 import astropy.io.fits as fits
 
+import pytest
+
+try:
+    import scipy
+except ImportError:
+    scipy = None
 
 ####### Test Common Infrastructre #######
 
@@ -319,14 +325,7 @@ def test_inverse_MFT():
     assert(   np.abs(psf1[0].data - psf[0].data).max()  < 1e-7 )
 
 
-import pytest
-
-try:
-    import scipy
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
-@pytest.mark.skipif('not HAS_SCIPY')
+@pytest.mark.skipif((scipy is None) or (os.environ.get('TRAVIS') == 'true'))
 def test_optic_resizing():
     '''
     Tests the rescaling functionality of OpticalElement.getPhasor(),
@@ -347,4 +346,3 @@ def test_optic_resizing():
     osys.addPupil(optics.CircularAperture(radius=3.25))
     assert(test_optic_small_element.getPhasor(osys.inputWavefront()).shape ==osys.inputWavefront().shape )
     assert(test_optic_large_element.getPhasor(osys.inputWavefront()).shape ==osys.inputWavefront().shape )
-

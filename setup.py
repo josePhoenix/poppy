@@ -18,6 +18,18 @@ with open(path.join(here, 'poppy', 'VERSION'), encoding='utf-8') as f:
 needs_pytest = {'pytest', 'test'}.intersection(sys.argv)
 pytest_runner_if_needed = ['pytest', 'pytest_runner'] if needs_pytest else []
 
+install_requires_packages = [
+      'six>=1.7.3',
+      'numpy>=1.8.0',
+      'scipy>=0.14.0',
+      'matplotlib>=1.3.0',
+      'astropy>=1.0.1',
+]
+
+# Python 3.4.x backports
+if sys.version_info[:2] < (3, 4):
+    install_requires_packages.append('enum34>=1.0.4')
+
 setup(
     name='poppy',
 
@@ -77,7 +89,7 @@ setup(
     # project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['six', 'numpy', 'scipy', 'matplotlib', 'astropy'],
+    install_requires=install_requires_packages,
 
     # List additional groups of dependencies here (e.g. development dependencies).
     # You can install these using the following syntax, for example:

@@ -1,9 +1,12 @@
 language: python
 
+# Setting sudo to false opts in to Travis-CI container-based builds.
+sudo: false
+
 python:
     - 2.7
     # - 3.3
-    # - 3.4
+    - 3.4
     # This is just for "egg_info".  All other builds are explicitly given in the matrix
 env:
     global:
@@ -30,10 +33,8 @@ matrix:
         # Try all python versions with the latest numpy
         - python: 2.7
           env: SETUP_CMD='test'
-        # - python: 3.3
-        #   env: SETUP_CMD='test'
-        # - python: 3.4
-        #   env: SETUP_CMD='test'
+        - python: 3.4
+          env: SETUP_CMD='test --coverage'
 
         # Try Astropy development version
         - python: 2.7
@@ -42,8 +43,19 @@ matrix:
         #   env: ASTROPY_VERSION=development SETUP_CMD='test'
 
         # Try older numpy version
+        # Use (temporarily?) the dev astropy to work around the issue in 
+        # https://github.com/mperrin/poppy/issues/87 
+        # https://github.com/astropy/astropy-helpers/issues/73#issuecomment-72558556
         - python: 2.7
-          env: NUMPY_VERSION=1.8 SETUP_CMD='test'
+          env: NUMPY_VERSION=1.8 ASTROPY_VERSION=development SETUP_CMD='test'
+
+addons:
+    apt:
+        packages:
+        - graphviz                  # actually only needed for build_spinx
+        - texlive-latex-extra       # actually only needed for build_spinx
+        - dvipng                    # actually only needed for build_spinx
+
 
 before_install:
 
@@ -55,12 +67,6 @@ before_install:
     - ./miniconda.sh -b
     - export PATH=/home/travis/miniconda/bin:$PATH
     - conda update --yes conda
-
-    # UPDATE APT-GET LISTINGS
-    - sudo apt-get update
-
-    # DOCUMENTATION DEPENDENCIES
-    - if [[ $SETUP_CMD == build_sphinx* ]]; then sudo apt-get install graphviz texlive-latex-extra dvipng; fi
 
 install:
 
@@ -81,8 +87,8 @@ install:
     # conda for packages available through conda, or pip for any other
     # packages. You should leave the `numpy=$NUMPY_VERSION` in the `conda`
     # install since this ensures Numpy does not get automatically upgraded.
-    - $CONDA_INSTALL numpy=$NUMPY_VERSION matplotlib scipy
-    # - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL ...; fi
+    - if [[ $SETUP_CMD != egg_info ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION matplotlib scipy; fi
+    - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL six enum34; fi
 
     # DOCUMENTATION DEPENDENCIES
     # build_sphinx needs sphinx and matplotlib (for plot_directive). Note that
@@ -101,4 +107,4 @@ after_success:
     # If coveralls.io is set up for this package, uncomment the line
     # below and replace "packagename" with the name of your package.
     # The coveragerc file may be customized as needed for your package.
-    # - if [[ $SETUP_CMD == 'test --coverage' ]]; then coveralls --rcfile='packagename/tests/coveragerc'; fi
+    - if [[ $SETUP_CMD == 'test --coverage' ]]; then coveralls --rcfile='poppy/tests/coveragerc'; fi

@@ -3,13 +3,13 @@
 """Physical Optics Propagation in PYthon (POPPY)
 
 
-POPPY is a Python package that simulates physical optical propagation including diffraction. 
+POPPY is a Python package that simulates physical optical propagation including diffraction.
 It implements a flexible framework for modeling Fraunhofer (far-field) diffraction
 and point spread function formation, particularly in the context of astronomical telescopes.
-POPPY was developed as part of a simulation package for JWST, but is more broadly applicable to many kinds of 
-imaging simulations. 
+POPPY was developed as part of a simulation package for JWST, but is more broadly applicable to many kinds of
+imaging simulations.
 
-Developed by Marshall Perrin at STScI, 2010-2014, for use simulating the James Webb Space Telescope. 
+Developed by Marshall Perrin at STScI, 2010-2014, for use simulating the James Webb Space Telescope.
 
 Documentation can be found online at https://pythonhosted.org/poppy/
 
@@ -17,41 +17,10 @@ This is an Astropy affiliated package.
 """
 from .version import __version__
 
-# Initialize astropy's configuration framework and/or update user config files
+# Make use of astropy affiliate framework to set __version__, __githash__, and
+# add the test() helper function
+from ._astropy_init import *
 # ----------------------------------------------------------------------------
-try:
-    _ASTROPY_SETUP_  # astropy sticks in an extra builtin with magic
-except NameError:
-    _ASTROPY_SETUP_ = None
-
-if not _ASTROPY_SETUP_:
-    import os
-    from warnings import warn
-    from astropy import config
-
-    # add these here so we only need to cleanup the namespace at the end
-    config_dir = None
-
-    if not os.environ.get('ASTROPY_SKIP_CONFIG_UPDATE', False):
-        config_dir = os.path.dirname(__file__)
-        config_template = os.path.join(config_dir, __package__ + ".cfg")
-        if os.path.isfile(config_template):
-            try:
-                config.configuration.update_default_config(
-                    __package__, config_dir, version=__version__)
-            except TypeError as orig_error:
-                try:
-                    config.configuration.update_default_config(
-                        __package__, config_dir)
-                except config.configuration.ConfigurationDefaultMissingError as e:
-                    wmsg = (e.args[0] + " Cannot install default profile. If you are "
-                            "importing from source, this is expected.")
-                    warn(config.configuration.ConfigurationDefaultMissingWarning(wmsg))
-                    del e
-                except:
-                    raise orig_error
-# ----------------------------------------------------------------------------
-
 
 import astropy as _astropy
 if _astropy.version.major + _astropy.version.minor*0.1 < 0.4: # pragma: no cover
@@ -59,11 +28,11 @@ if _astropy.version.major + _astropy.version.minor*0.1 < 0.4: # pragma: no cover
 
 from astropy import config as _config
 class Conf(_config.ConfigNamespace):
-    """ 
+    """
     Configuration parameters for `poppy`.
     """
 
-    use_multiprocessing = _config.ConfigItem(False, 
+    use_multiprocessing = _config.ConfigItem(False,
             'Should PSF calculations run in parallel using multiple processors'
             'using the Python multiprocessing framework (if True; faster but '
             'does not allow display of each wavelength) or run serially in a '
@@ -100,6 +69,18 @@ class Conf(_config.ConfigNamespace):
     enable_flux_tests =  _config.ConfigItem(False, 'Enable additional '+
         'verbose printout of fluxes and flux conservation during '+
         'calculations. Useful for testing.')
+    cmap_sequential = _config.ConfigItem(
+        'gist_heat',
+        'Select a default colormap to represent sequential data (e.g. intensity)'
+    )
+    cmap_diverging = _config.ConfigItem(
+        'RdBu_r',
+        'Select a default colormap to represent diverging data (e.g. OPD)'
+    )
+    cmap_mask = _config.ConfigItem(
+        'gray',
+        'Select a default colormap to represent 0 or 1 mask data (e.g. aperture masks)'
+    )
 
 conf = Conf()
 
@@ -108,8 +89,9 @@ from . import utils
 from . import optics
 
 from .poppy_core import *
-from .utils import * 
+from .utils import *
 from .optics import *
+from .wfe import *
 
 from .instrument import Instrument
 

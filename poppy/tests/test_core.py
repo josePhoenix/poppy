@@ -324,7 +324,14 @@ def test_inverse_MFT():
     assert(   np.abs(psf1[0].data - psf[0].data).max()  < 1e-7 )
 
 
-@pytest.mark.skipif((scipy is None) or (os.environ.get('TRAVIS') == 'true'))
+@pytest.mark.skipif(
+    (scipy is None),
+    reason='No SciPy installed'
+)
+@pytest.mark.skipif(
+    (os.environ.get('TRAVIS') == 'true'),
+    reason='Memory usage too high for Travis'
+)
 def test_optic_resizing():
     '''
     Tests the rescaling functionality of OpticalElement.getPhasor(),

@@ -8,6 +8,7 @@ import six
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import gridspec
 import scipy.ndimage.interpolation
 import matplotlib
 
@@ -1227,7 +1228,7 @@ class OpticalSystem(object):
         the size of the first optical plane, assumed to be a pupil.
 
         If the first optical element is an Analytic pupil (i.e. has no pixel scale) then
-        the default size is set by the `npix` parameter to __init__ of this class, 
+        the default size is set by the `npix` parameter to __init__ of this class,
         which itself has a default value of 1024.
 
         Uses self.source_offset to assign an off-axis tilt, if requested.
@@ -1244,8 +1245,8 @@ class OpticalSystem(object):
 
         """
 
-        # somewhat complicated logic here for historical reasons. 
-        # if we have a first optical plane, check and see if it specifies the entrance sampling. 
+        # somewhat complicated logic here for historical reasons.
+        # if we have a first optical plane, check and see if it specifies the entrance sampling.
 
         npix=None
         diam=None
@@ -1469,14 +1470,14 @@ class OpticalSystem(object):
             # This is a memory-intensive task so that can end up swapping to disk and thrashing IO
             nproc = conf.n_processes if conf.n_processes > 1 \
                                      else utils.estimate_optimal_nprocesses(self, nwavelengths=len(wavelength))
-            nproc = min(nproc, len(wavelength)) # never try more processes than wavelengths. 
+            nproc = min(nproc, len(wavelength)) # never try more processes than wavelengths.
             # be sure to cast nproc to int below; will fail if given a float even if of integer value
 
             if sys.version_info < (3, 4, 0):
                 pool = multiprocessing.Pool(int(nproc))
             else:
                 # Use new forkserver for more robustness;
-                # Resolves https://github.com/mperrin/poppy/issues/23 
+                # Resolves https://github.com/mperrin/poppy/issues/23
                 ctx = multiprocessing.get_context('forkserver')
                 pool =ctx.Pool(int(nproc))
 
@@ -1589,9 +1590,31 @@ class OpticalSystem(object):
 
         planes_to_display = [p for p in self.planes if (not isinstance(p, Detector) and not p._suppress_display)]
         nplanes = len(planes_to_display)
+        if 'what' in kwargs:
+
+        show_both = kwargs.get('what', 'intensity') == 'both'
+        if show_both:
+            grid = gridspec.GridSpec(nplanes, 2)
+        else:
+            grid = gridspec.GridSpec(nplanes, 1)
+
+        if 'ax' in kwargs:
+            fig, ax = utils.current_figure_and_axes(kwargs['ax'])
+            del kwargs['ax']
+        else:
+            fig, ax = utils.current_figure_and_axes(ax=None)
+        fig.clear()
+
+
         for i, plane in enumerate(planes_to_display):
             _log.info("Displaying plane {0:s} in row {1:d} of {2:d}".format(plane.name, i+1, nplanes))
-            plane.display(nrows=nplanes, row=i+1, **kwargs)
+            if show_both:
+                intensity_ax = fig.add_subplot(grid[i, 0])
+                phase_ax = fig.add_subplot(grid[i, 1])
+                plane.display(ax=ax, **kwargs)
+            else:
+                ax = fig.add_subplot(grid[i])
+                plane.display(ax=ax, **kwargs)
 
     def _propagation_info(self):
         """ Provide some summary information on the optical propagation calculations that
@@ -1817,8 +1840,8 @@ class SemiAnalyticCoronagraph(OpticalSystem):
 
 class MatrixFTCoronagraph(OpticalSystem):
     """ A subclass of OpticalSystem that implements a specialized propagation
-    algorithm for coronagraphs which are most efficiently modeled by 
-    matrix Fourier transforms, and in which the semi-analytical/Babinet 
+    algorithm for coronagraphs which are most efficiently modeled by
+    matrix Fourier transforms, and in which the semi-analytical/Babinet
     superposition approach does not apply.
 
     The way to use this class is to build an OpticalSystem class the usual way, and then
@@ -2104,8 +2127,8 @@ class OpticalElement(object):
         else:
             return self.phasor
 
-    def display(self, nrows=1, row=1, what='intensity', crosshairs=True, ax=None, colorbar=True,
-                colorbar_orientation=None, title=None, opd_vmax=0.5e-6):
+    def display(self, what='intensity', crosshairs=True, ax=None, colorbar=True,
+                colorbar_orientation='vertical', title=None, opd_vmax=0.5e-6):
         """Display plots showing an optic's transmission and OPD.
 
         Parameters
@@ -2115,8 +2138,6 @@ class OpticalElement(object):
             or 'both' (meaning intensity and phase in two subplots)
         ax : matplotlib.Axes instance
             Axes to display into
-        nrows, row : integers
-            number of rows and row index for subplot display
         crosshairs : bool
             Display crosshairs indicating the center?
         colorbar : bool
@@ -2129,8 +2150,6 @@ class OpticalElement(object):
         title : string
             Plot label
         """
-        if colorbar_orientation is None:
-            colorbar_orientation = "horizontal" if nrows == 1 else 'vertical'
 
         if self.planetype is _PUPIL:
             cmap_amp = getattr(matplotlib.cm, conf.cmap_pupil_intensity)
@@ -2143,8 +2162,6 @@ class OpticalElement(object):
         norm_opd = matplotlib.colors.Normalize(vmin=-opd_vmax, vmax=opd_vmax)
 
         units = "[meters]" if self.planetype == _PUPIL else "[arcsec]"
-        if nrows > 1:
-            units = self.name + "\n" + units
 
         if self.pixelscale is not None:
             halfsize = self.pixelscale * self.amplitude.shape[0] / 2
@@ -2157,7 +2174,7 @@ class OpticalElement(object):
         ampl = self.amplitude
         opd = self.opd.copy()
         opd[np.where(self.amplitude == 0)] = np.nan
-
+        fig, ax = utils.current_figure_and_axes(ax)
         if what == 'both':
             # recursion!
             if ax is None:
@@ -2192,16 +2209,11 @@ class OpticalElement(object):
             cmap = cmap_opd
             norm = norm_opd
 
-        # now we plot whichever was chosen...
-        if ax is None:
-            if nrows > 1:
-                ax = plt.subplot(nrows, 2, row * 2 - 1)
-            else:
-                ax = plt.subplot(111)
+
         utils.imshow_with_mouseover(plot_array, ax=ax, extent=extent, cmap=cmap, norm=norm,
                                     origin='lower')
-        if nrows == 1:
-            plt.title(title + " for " + self.name)
+
+        ax.title("{} for {}".format(title, self.name))
         plt.ylabel(units)
         ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=4, integer=True))
         ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=4, integer=True))

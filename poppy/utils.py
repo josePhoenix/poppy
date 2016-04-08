@@ -38,6 +38,12 @@ __all__ = [ 'display_PSF', 'display_PSF_difference', 'display_EE', 'display_prof
 #    Display functions
 #
 
+def current_figure_and_axes(ax):
+    if ax is None:
+        from matplotlib import pyplot as plt
+        return plt.gcf(), plt.gca()
+    else:
+        return ax.figure, ax
 
 def imshow_with_mouseover(image, ax=None,  *args, **kwargs):
     """Wrapper for matplotlib imshow that displays the value under the

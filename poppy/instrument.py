@@ -132,9 +132,10 @@ class Instrument(object):
         self._filter = value
 
     #----- actual optical calculations follow here -----
-    def calcPSF(self, outfile=None, source=None, nlambda=None, monochromatic=None ,
-            fov_arcsec=None, fov_pixels=None,  oversample=None, detector_oversample=None, fft_oversample=None, rebin=True,
-            clobber=True, display=False, save_intermediates=False, return_intermediates=False):
+    def calcPSF(self, outfile=None, source=None, nlambda=None, monochromatic=None, fov_arcsec=None,
+                fov_pixels=None,  oversample=None, detector_oversample=None, fft_oversample=None,
+                rebin=True, clobber=True, display=False, save_intermediates=False,
+                return_intermediates=False, ax=None):
         """ Compute a PSF.
         The result can either be written to disk (set outfile="filename") or else will be returned as
         a FITS HDUlist object.
@@ -261,15 +262,14 @@ class Instrument(object):
 
 
         if display:
-            f = plt.gcf()
-            plt.suptitle( "%s, filter= %s" % (self.name, self.filter), size='xx-large')
+            fig, ax = utils.current_figure_and_axes(ax)
+            fig.suptitle( "%s, filter= %s" % (self.name, self.filter), size='xx-large')
 
             if monochromatic is not None:
                 labeltext = "Monochromatic calculation at {:.3f} um".format(monochromatic*1e6)
             else:
                 labeltext = "Calculation with %d wavelengths (%g - %g um)" % (nlambda, wavelens[0]*1e6, wavelens[-1]*1e6)
-            plt.text( 0.99, 0.04, labeltext,
-                    transform=f.transFigure, horizontalalignment='right')
+            ax.text(0.99, 0.04, labeltext, transform=fig.transFigure, horizontalalignment='right')
 
         if outfile is not None:
             result[0].header["FILENAME"] = ( os.path.basename(outfile), "Name of this file")

@@ -36,6 +36,7 @@ env:
         - SETUP_CMD='test'
 
 matrix:
+    include:
         # Check for Sphinx doc build errors
         - python: 2.7
           env: SETUP_CMD='build_sphinx'

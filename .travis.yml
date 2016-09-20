@@ -35,7 +35,7 @@ matrix:
           env: SETUP_CMD='test --coverage'
 
         # Check for sphinx doc build errors
-        - python: 2.7
+        - python: 3.5
           env: SETUP_CMD='build_sphinx'
 
         # Try all supported Python versions with the latest NumPy
